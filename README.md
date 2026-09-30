@@ -11,7 +11,7 @@ Submitted by: **Priyanshu Ojha**
 | `Bonus_UptimeMonitor_Priyanshu.json` | Bonus: uptime monitor workflow |
 | `screenshots/` | Task 2 canvas, successful output, error-path test; Bonus canvas and alert |
 
-Loom walkthrough: **[ADD LOOM LINK HERE]**
+Loom walkthrough: **https://drive.google.com/file/d/1Etpsx_2DiXMepLtR99d_WjrPvorXB8gR/view?usp=sharing**
 
 ---
 
