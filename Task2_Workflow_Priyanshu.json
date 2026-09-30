@@ -1,0 +1,309 @@
+{
+  "name": "Task2_Workflow_Priyanshu",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "fb9e463b-6064-4931-a62a-2567145368c1",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/search/repositories?q=topic:automation&sort=stars&order=desc&per_page=10",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        0
+      ],
+      "id": "ac8b0837-b2a7-4596-9f04-1b88bb2cd521",
+      "name": "HTTP Request",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const repos = $input.first().json.items || [];\n\nreturn repos\n  .sort((a, b) => b.stargazers_count - a.stargazers_count)\n  .slice(0, 5)\n  .map(r => ({\n    json: {\n      name: r.full_name,\n      stars: r.stargazers_count,\n      url: r.html_url,\n      description: r.description || 'No description',\n    },\n  }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -80
+      ],
+      "id": "54d9d542-b35e-409b-89bc-7d49c10c12c1",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.github.com/repos/{{ $json.name }}/commits?per_page=1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        640,
+        144
+      ],
+      "id": "a1e81078-ab0c-4923-94a8-b05184ab4e45",
+      "name": "HTTP Request1",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const repo = $('Code in JavaScript').item.json;\n\nreturn {\n  json: {\n    ...repo,\n    lastCommit: ($json.commit?.message || 'n/a').split('\\n')[0],\n    lastCommitDate: $json.commit?.author?.date || 'n/a',\n  },\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        -128
+      ],
+      "id": "208f7724-b114-4f7f-9c60-ab102a8ec533",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "95cf07d2-ffc6-4d27-9bd8-b554e5ac0717",
+              "leftValue": "={{ $json.stars }}",
+              "rightValue": 150000,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1056,
+        48
+      ],
+      "id": "5308f415-8c80-49cc-920a-8f1a5a3ebcd3",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const lines = $input.all().map(i => {\n  const r = i.json;\n  return `• **${r.name}** ⭐ ${r.stars}\\n  ${r.description.slice(0, 100)}\\n  Last commit: ${r.lastCommit}\\n  <${r.url}>`;\n});\n\nreturn [{ json: { message: `🔥 **HOT repos (stars > 150000)**\\n\\n${lines.join('\\n\\n')}` } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        -160
+      ],
+      "id": "10b667dd-eaca-4e74-a78d-63f9ab1f9894",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const lines = $input.all().map(i => {\n  const r = i.json;\n  return `• **${r.name}** ⭐ ${r.stars}\\n  ${r.description.slice(0, 100)}\\n  Last commit: ${r.lastCommit}\\n  <${r.url}>`;\n});\n\nreturn [{ json: { message: `📈 **Popular repos (stars ≤ 150000)**\\n\\n${lines.join('\\n\\n')}` } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        144
+      ],
+      "id": "635e984e-8c97-4a4b-86c0-fec41bcff3ad",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "={{ $json.message }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        144
+      ],
+      "id": "0c9de3ab-367e-4db4-aebb-8187f6627c32",
+      "name": "Discord",
+      "webhookId": "ef6a9d91-e03f-4af9-b9f3-05a61dca96c2",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "gxJoenxxLkWzHh16",
+          "name": "Discord Webhook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=⚠️ Morning brief: GitHub API call failed. Details: {{ JSON.stringify($json).slice(0, 300) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        464,
+        400
+      ],
+      "id": "06d2d367-ccee-4799-986d-e1a37ba2eda8",
+      "name": "Discord1",
+      "webhookId": "b885594b-c7e1-4389-9e5a-6441a23c5e2b",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "gxJoenxxLkWzHh16",
+          "name": "Discord Webhook account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Discord1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Discord1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "10d65935-b76d-4569-9c07-4d1cb2329f54",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "813433347aa41e86ded8ea471badeb170a31f7b9df7f5a9c5af85f3ae7e5e6c1"
+  },
+  "nodeGroups": [],
+  "id": "HzsQQ4wozPKXK5mw",
+  "tags": []
+}
